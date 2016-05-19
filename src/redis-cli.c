@@ -316,17 +316,16 @@ static int cliAuth() {
 
 /* Send SELECT dbnum to the server */
 static int cliSelect() {
-    redisReply *reply;
+    int len = 0, val = 0;
     if (config.dbnum == 0) return REDIS_OK;
 
-    reply = redisCommand(context,"SELECT %d",config.dbnum);
-    if (reply != NULL) {
-        int result = REDIS_OK;
-        if (reply->type == REDIS_REPLY_ERROR) result = REDIS_ERR;
-        freeReplyObject(reply);
-        return result;
-    }
-    return REDIS_ERR;
+    val = redisAppendCommand(context,"SELECT %d",config.dbnum);
+    do {
+      val = redisBufferWrite(context, &len);
+      if (REDIS_ERR == val) break;
+    } while(!len);
+
+    return REDIS_OK;
 }
 
 /* Connect to the server. If force is not zero the connection is performed
@@ -622,6 +621,11 @@ static int cliSendCommand(int argc, char **argv, int repeat) {
         !strcasecmp(command,"psubscribe")) config.pubsub_mode = 1;
     if (!strcasecmp(command,"sync") ||
         !strcasecmp(command,"psync")) config.slave_mode = 1;
+    if(!strcasecmp(command, "select")) {
+       char *end;
+       strtoll(argv[1], &end, 10);
+       if(*end) return REDIS_ERR;
+    }
 
     /* Setup argument length */
     argvlen = malloc(argc*sizeof(size_t));
@@ -651,7 +655,7 @@ static int cliSendCommand(int argc, char **argv, int repeat) {
             return REDIS_ERR;  /* Error = slaveMode lost connection to master */
         }
 
-        if (cliReadReply(output_raw) != REDIS_OK) {
+        if (strcasecmp(command, "select") && cliReadReply(output_raw) != REDIS_OK) {
             free(argvlen);
             return REDIS_ERR;
         } else {

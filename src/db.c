@@ -308,15 +308,14 @@ void selectCommand(redisClient *c) {
     if (getLongFromObjectOrReply(c, c->argv[1], &id,
         "invalid DB index") != REDIS_OK)
         return;
-
+/*
     if (server.cluster_enabled && id != 0) {
         addReplyError(c,"SELECT is not allowed in cluster mode");
         return;
     }
+*/
     if (selectDb(c,id) == REDIS_ERR) {
-        addReplyError(c,"invalid DB index");
-    } else {
-        addReply(c,shared.ok);
+/*        addReplyError(c,"invalid DB index"); */
     }
 }
 

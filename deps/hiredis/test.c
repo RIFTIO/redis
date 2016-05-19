@@ -29,7 +29,7 @@ struct config {
 
     struct {
         const char *path;
-    } unix;
+    } un;
 };
 
 /* The following lines make up our testing "framework" :) */
@@ -89,10 +89,10 @@ static redisContext *connect(struct config config) {
     if (config.type == CONN_TCP) {
         c = redisConnect(config.tcp.host, config.tcp.port);
     } else if (config.type == CONN_UNIX) {
-        c = redisConnectUnix(config.unix.path);
+        c = redisConnectUnix(config.un.path);
     } else if (config.type == CONN_FD) {
         /* Create a dummy connection just to get an fd to inherit */
-        redisContext *dummy_ctx = redisConnectUnix(config.unix.path);
+        redisContext *dummy_ctx = redisConnectUnix(config.un.path);
         if (dummy_ctx) {
             int fd = disconnect(dummy_ctx, 1);
             printf("Connecting to inherited fd %d\n", fd);
@@ -666,7 +666,7 @@ int main(int argc, char **argv) {
             .host = "127.0.0.1",
             .port = 6379
         },
-        .unix = {
+        .un = {
             .path = "/tmp/redis.sock"
         }
     };
@@ -687,7 +687,7 @@ int main(int argc, char **argv) {
             cfg.tcp.port = atoi(argv[0]);
         } else if (argc >= 2 && !strcmp(argv[0],"-s")) {
             argv++; argc--;
-            cfg.unix.path = argv[0];
+            cfg.un.path = argv[0];
         } else if (argc >= 1 && !strcmp(argv[0],"--skip-throughput")) {
             throughput = 0;
         } else if (argc >= 1 && !strcmp(argv[0],"--skip-inherit-fd")) {
@@ -711,14 +711,14 @@ int main(int argc, char **argv) {
     test_append_formatted_commands(cfg);
     if (throughput) test_throughput(cfg);
 
-    printf("\nTesting against Unix socket connection (%s):\n", cfg.unix.path);
+    printf("\nTesting against Unix socket connection (%s):\n", cfg.un.path);
     cfg.type = CONN_UNIX;
     test_blocking_connection(cfg);
     test_blocking_io_errors(cfg);
     if (throughput) test_throughput(cfg);
 
     if (test_inherit_fd) {
-        printf("\nTesting against inherited fd (%s):\n", cfg.unix.path);
+        printf("\nTesting against inherited fd (%s):\n", cfg.un.path);
         cfg.type = CONN_FD;
         test_blocking_connection(cfg);
     }
